@@ -1,20 +1,15 @@
 # cashgrab
 
-`cashgrab` is a local CLI for browser-driven banking workflows.
+`cashgrab` is a local CLI that scrapes banking websites via Chrome DevTools Protocol (CDP). It launches a dedicated Chrome instance, connects over remote debugging, and automates authenticated sessions to pull account data.
 
-Today it does five things:
+Supported banks:
 
-- Starts a dedicated Chrome instance with remote debugging enabled for scraping flows.
-- Reads Bankwest account balances from an authenticated Bankwest session.
-- Reads St.George account balances from an authenticated St.George session.
-- Exports Bankwest transactions as QIF files for downstream import into budgeting tools.
-- Exports St.George transactions as CSV files for downstream import or cleaning.
+- **Bankwest** -- account balances and transaction export (QIF)
+- **St.George** -- account balances and transaction export (CSV)
 
-The repo also contains bank-specific cleaning helpers for imported transaction files.
+The repo also includes shell scripts for cleaning exported transaction files before import.
 
-## Bankwest
-
-Automates Bankwest Online Banking via Chrome DevTools Protocol (CDP). Everything goes through the `cashgrab` CLI.
+## Setup
 
 Install dependencies and expose the local CLI:
 
@@ -23,9 +18,9 @@ npm install
 npm link
 ```
 
-Requires Chrome running with remote debugging on port `9222` and logged in to Bankwest.
+## Browser
 
-Start Chrome:
+All scraping commands require Chrome running with remote debugging on port `9222`.
 
 ```bash
 cashgrab browser
@@ -38,6 +33,10 @@ Use `--profile` to copy your existing Chrome profile (cookies, logins) into the 
 ```bash
 cashgrab browser --profile
 ```
+
+## Bankwest
+
+Automates Bankwest Online Banking via Chrome DevTools Protocol (CDP). Requires a logged-in Bankwest session.
 
 ### Account Balances
 
@@ -100,7 +99,9 @@ cashgrab bankwest transactions "offset joint" --from 01/01/2026 --to 28/03/2026
 
 ## St.George
 
-Requires Chrome running with remote debugging on port `9222` and logged in to St.George Internet Banking.
+Automates St.George Internet Banking via Chrome DevTools Protocol (CDP). Requires a logged-in St.George session.
+
+### Account Balances
 
 Prints all visible account balances from the portfolio page.
 
