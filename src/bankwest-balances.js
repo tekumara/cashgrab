@@ -2,16 +2,17 @@
  * Bankwest Account Balances
  *
  * Connects to a running Chrome instance (CDP on localhost:9222),
- * verifies the active tab is the Bankwest balances page,
+ * navigates to the Bankwest balances page,
  * then prints all accounts and their balances.
  *
  * Prerequisites:
  *   - Chrome running with --remote-debugging-port=9222
  *   - Logged in to Bankwest Online Banking
- *   - Active tab on: online.bankwest.com.au/CMWeb/AccountInformation/AI/Balances.aspx
  */
 import puppeteer from "puppeteer-core";
 
+const BALANCES_URL =
+  "https://online.bankwest.com.au/CMWeb/AccountInformation/AI/Balances.aspx";
 const EXPECTED_URL_PATTERN = /online\.bankwest\.com\.au\/CMWeb\/AccountInformation\/AI\/Balances\.aspx/;
 const CHROME_DEBUG_URL = "http://localhost:9222";
 
@@ -30,20 +31,17 @@ export async function bankwestBalances() {
     process.exit(1);
   });
 
-  const page = (await browser.pages()).at(-1);
+  const page = (await browser.pages()).at(-1) ?? await browser.newPage();
 
-  if (!page) {
-    console.error("✗ No active tab found");
-    await browser.disconnect();
-    process.exit(1);
-  }
+  // Navigate to the balances page and let Bankwest redirect if the session is not logged in.
+  await page.goto(BALANCES_URL, { waitUntil: "domcontentloaded", timeout: 15000 });
 
-  // Verify we're on the right page.
   const currentUrl = page.url();
   if (!EXPECTED_URL_PATTERN.test(currentUrl)) {
-    console.error("✗ Wrong page. Expected Bankwest Account Balances page.");
+    console.error("✗ Not logged in. Expected Bankwest Account Balances page.");
     console.error(`  Current URL: ${currentUrl}`);
-    console.error(`  Expected:    https://online.bankwest.com.au/CMWeb/AccountInformation/AI/Balances.aspx`);
+    console.error(`  Expected:    ${BALANCES_URL}`);
+    console.error("  Log in to Bankwest Online Banking first.");
     await browser.disconnect();
     process.exit(1);
   }
