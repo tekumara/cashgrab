@@ -2,12 +2,13 @@
 
 `cashgrab` is a local CLI for browser-driven banking workflows.
 
-Today it does four things:
+Today it does five things:
 
 - Starts a dedicated Chrome instance with remote debugging enabled for scraping flows.
 - Reads Bankwest account balances from an authenticated Bankwest session.
 - Reads St.George account balances from an authenticated St.George session.
 - Exports Bankwest transactions as QIF files for downstream import into budgeting tools.
+- Exports St.George transactions as CSV files for downstream import or cleaning.
 
 The repo also contains bank-specific cleaning helpers for imported transaction files.
 
@@ -108,6 +109,36 @@ cashgrab st-george balances
 ```
 
 The command navigates directly to `viewAccountPortfolio.html` and expects visible account cards on the portfolio page. If St.George shows the logged-out or inactive page at the same URL, the session is not logged in.
+
+### Transaction Export
+
+Exports transactions as a CSV file using St.George's built-in export flow.
+
+The command starts at the portfolio page, matches the requested account against the visible account cards, navigates to the account details page for that account, then downloads a CSV export for the requested date range. Categories and subcategories are included in the exported file.
+
+```text
+❯ cashgrab st-george transactions --help
+Usage: cashgrab st-george transactions [options] <accountName...>
+
+Arguments:
+  accountName           Case-insensitive substring match against the St.George
+                        portfolio accounts
+
+Options:
+  -r, --range <preset>  Date range preset: L7Days, L30Days (default: "L30Days")
+  --from <date>         Custom start date (DD/MM/YYYY), requires --to
+  --to <date>           Custom end date (DD/MM/YYYY or "today"), requires --from
+  -o, --output <dir>    Output directory for the exported file
+  -h, --help            display help for command
+```
+
+Examples:
+
+```bash
+cashgrab st-george transactions "000 111 222" -r L7Days
+cashgrab st-george transactions "residential loan s000 111 222 333" -r L30Days -o ~/Downloads
+cashgrab st-george transactions "complete freedom offset 000 111 222" --from 01/03/2026 --to 29/03/2026
+```
 
 ## Cleaning
 

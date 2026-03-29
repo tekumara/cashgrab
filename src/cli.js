@@ -8,6 +8,10 @@ import {
 	normalizeTransactionOptions,
 } from "./bankwest-transactions.js";
 import { stGeorgeBalances } from "./stgeorge-balances.js";
+import {
+	normalizeStGeorgeTransactionOptions,
+	stGeorgeTransactions,
+} from "./stgeorge-transactions.js";
 
 const program = new Command();
 
@@ -75,6 +79,36 @@ stGeorge
 	.description("Print balances from the St.George account portfolio page")
 	.action(async () => {
 		await stGeorgeBalances();
+	});
+
+stGeorge
+	.command("transactions")
+	.description("Export transactions as a CSV file")
+	.argument(
+		"<accountName...>",
+		"Case-insensitive substring match against the St.George portfolio accounts",
+	)
+	.option(
+		"-r, --range <preset>",
+		"Date range preset: L7Days, L30Days",
+		"L30Days",
+	)
+	.option("--from <date>", "Custom start date (DD/MM/YYYY), requires --to")
+	.option(
+		"--to <date>",
+		'Custom end date (DD/MM/YYYY or "today"), requires --from',
+	)
+	.option("-o, --output <dir>", "Output directory for the exported file")
+	.action(async (accountName, options) => {
+		await stGeorgeTransactions(
+			normalizeStGeorgeTransactionOptions({
+				accountQuery: accountName.join(" "),
+				range: options.range,
+				from: options.from,
+				to: options.to,
+				outputDir: options.output,
+			}),
+		);
 	});
 
 await program.parseAsync(process.argv);
