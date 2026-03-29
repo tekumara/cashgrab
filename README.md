@@ -1,6 +1,14 @@
-# actual budget scripts
+# cashgrab
 
-Scripts for working with [Actual Budget](actual.md).
+`cashgrab` is a local CLI for browser-driven banking workflows.
+
+Today it does three things:
+
+- Starts a dedicated Chrome instance with remote debugging enabled for scraping flows.
+- Reads Bankwest account balances from an authenticated Bankwest session.
+- Exports Bankwest transactions as QIF files for downstream import into budgeting tools.
+
+The repo also contains bank-specific cleaning helpers for imported transaction files.
 
 ## Bankwest
 
@@ -33,7 +41,7 @@ cashgrab browser --profile
 
 Prints all account balances grouped by category.
 
-The active tab must be on the Bankwest Account Balances page.
+Navigates to the Bankwest Account Balances page automatically. If Bankwest redirects away from that page, the session is not logged in.
 
 ```bash
 cashgrab bankwest balances
@@ -88,32 +96,9 @@ cashgrab bankwest transactions "home loan john" -r L90Days -o ~/Downloads
 cashgrab bankwest transactions "offset joint" --from 01/01/2026 --to 28/03/2026
 ```
 
-## Imports
+## Cleaning
 
 Cleaning transactions before importing them:
 
 - [St George](src/stg) - download as CSV
 - [NAB](src/nab) - download as QIF
-
-## Transactions
-
-```bash
-❯ abcli --help
-Usage: abcli <command> [options]
-
-Commands:
-  budgets
-      List budgets and their sync ids.
-
-  accounts
-      List accounts and their current balances.
-
-  find <payee> <txn-date>
-      Find transactions by exact payee name and ISO date (YYYY-MM-DD).
-
-  split [--transaction-id <id> | --payee <payee> --txn-date <date>] <notes> <category> <amount> ...
-      Split a transaction into sub-transactions.
-
-  report <name> [--mode total|time] [--tsv] [--pbcopy]
-      Render a custom report by name.
-```
