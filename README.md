@@ -2,10 +2,11 @@
 
 `cashgrab` is a local CLI for browser-driven banking workflows.
 
-Today it does three things:
+Today it does four things:
 
 - Starts a dedicated Chrome instance with remote debugging enabled for scraping flows.
 - Reads Bankwest account balances from an authenticated Bankwest session.
+- Reads St.George account balances from an authenticated St.George session.
 - Exports Bankwest transactions as QIF files for downstream import into budgeting tools.
 
 The repo also contains bank-specific cleaning helpers for imported transaction files.
@@ -95,6 +96,18 @@ cashgrab bankwest transactions "offset joint" -r L30Days
 cashgrab bankwest transactions "home loan john" -r L90Days -o ~/Downloads
 cashgrab bankwest transactions "offset joint" --from 01/01/2026 --to 28/03/2026
 ```
+
+## St.George
+
+Requires Chrome running with remote debugging on port `9222` and logged in to St.George Internet Banking.
+
+Prints all visible account balances from the portfolio page.
+
+```bash
+cashgrab st-george balances
+```
+
+The command navigates directly to `viewAccountPortfolio.html` and expects visible account cards on the portfolio page. If St.George shows the logged-out or inactive page at the same URL, the session is not logged in.
 
 ## Cleaning
 

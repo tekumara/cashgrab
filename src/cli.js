@@ -7,6 +7,7 @@ import {
 	bankwestTransactions,
 	normalizeTransactionOptions,
 } from "./bankwest-transactions.js";
+import { stGeorgeBalances } from "./stgeorge-balances.js";
 
 const program = new Command();
 
@@ -62,6 +63,18 @@ bankwest
 				outputDir: options.output,
 			}),
 		);
+	});
+
+const stGeorge = program
+	.command("st-george")
+	.alias("stgeorge")
+	.description("St.George scraping commands");
+
+stGeorge
+	.command("balances")
+	.description("Print balances from the St.George account portfolio page")
+	.action(async () => {
+		await stGeorgeBalances();
 	});
 
 await program.parseAsync(process.argv);
