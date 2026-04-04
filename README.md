@@ -9,11 +9,10 @@ Supported banks:
 
 The repo also includes shell scripts for cleaning exported transaction files before import.
 
-## Setup
+## Install
 
 ```bash
-npm install
-npm link
+npm install -g cashgrab
 ```
 
 ## Browser
@@ -71,3 +70,11 @@ cashgrab st-george transactions "complete freedom offset 000 111 222" --from 01/
 
 - [St George](src/stg) -- CSV cleaning
 - [NAB](src/nab) -- QIF cleaning
+
+## Development setup
+
+```bash
+npm install
+npm link
+```
+
