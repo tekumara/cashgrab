@@ -63,13 +63,12 @@ export function normalizeStGeorgeTransactionOptions({
     opts.to = formatToday();
   }
 
+  // Accept DD-MM-YYYY (dashes) in addition to the canonical DD/MM/YYYY
+  if (opts.from) opts.from = opts.from.replace(/-/g, "/");
+  if (opts.to) opts.to = opts.to.replace(/-/g, "/");
+
   if ((opts.from && !opts.to) || (opts.to && !opts.from)) {
     console.error("✗ Both --from and --to are required for custom date range");
-    process.exit(1);
-  }
-
-  if (opts.from && opts.range !== "L30Days") {
-    console.error("✗ Cannot use --range with --from/--to");
     process.exit(1);
   }
 

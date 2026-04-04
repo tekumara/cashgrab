@@ -86,7 +86,7 @@ stGeorge
 	.description("Export transactions as a CSV file")
 	.argument(
 		"<accountName...>",
-		"Case-insensitive substring match against the St.George portfolio accounts",
+		"Case-insensitive substring match against account name, account number, or BSB",
 	)
 	.option(
 		"-r, --range <preset>",

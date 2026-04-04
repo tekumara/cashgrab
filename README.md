@@ -1,6 +1,6 @@
 # cashgrab
 
-`cashgrab` is a local CLI that scrapes banking websites via Chrome DevTools Protocol (CDP). It launches a dedicated Chrome instance, connects over remote debugging, and automates authenticated sessions to pull account data.
+`cashgrab` is a local CLI that scrapes banking websites via Chrome DevTools Protocol (CDP). It launches a dedicated Chrome instance, connects over remote debugging, and automates authenticated sessions to pull account data. It never sees your credentials - these stay within the Browser.
 
 Supported banks:
 
