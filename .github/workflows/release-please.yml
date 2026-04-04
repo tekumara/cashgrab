@@ -17,7 +17,7 @@ jobs:
     steps:
       - name: Generate app token for release-please
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
           # https://github.com/apps/potatobot-prime
           app-id: ${{ secrets.APP_ID }}
