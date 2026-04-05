@@ -10,7 +10,7 @@
  *   - Logged in to Bankwest Online Banking
  */
 
-import { mkdtemp, readdir, rename } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { connectToChrome } from "./connect-browser.js";
@@ -21,6 +21,11 @@ const SEARCH_URL =
 const LOGIN_URL = "https://online.bankwest.com.au/Session/PersonalLogin";
 const SEARCH_URL_PATTERN =
   /online\.bankwest\.com\.au\/CMWeb\/AccountInformation\/TS\/TransactionSearch\.aspx/;
+
+function countQifTransactions(content) {
+  return content.split(/\r?\n/).filter((line) => line.trim() === "^").length;
+}
+
 // Normalize CLI-provided options and enforce valid date-range combinations.
 export function normalizeTransactionOptions({
   accountQuery,
@@ -197,6 +202,10 @@ export async function bankwestTransactions(options) {
   await rename(downloadedFile, outputFile);
 
   console.error(`✓ Exported: ${outputFile.split("/").pop()}`);
+  const transactionCount = countQifTransactions(
+    await readFile(outputFile, "utf8")
+  );
+  console.error(`Transactions: ${transactionCount}`);
 
   await browser.disconnect();
 }
