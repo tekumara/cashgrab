@@ -1,13 +1,11 @@
 # cashgrab
 
-`cashgrab` is a local CLI that scrapes banking websites via Chrome DevTools Protocol (CDP). It launches a dedicated Chrome instance, connects over remote debugging, and automates authenticated sessions to pull account data. It never sees your credentials - these stay within the Browser.
+`cashgrab` is a local CLI that scrapes banking websites. It launches a dedicated Chrome instance, connects over remote debugging (CDP), and automates pulling account data. It never sees your credentials - these stay within Chrome and must be manually entered.
 
 Supported banks:
 
 - **Bankwest** -- account balances and transaction export (QIF)
 - **St.George** -- account balances and transaction export (CSV)
-
-The repo also includes shell scripts for cleaning exported transaction files before import.
 
 ## Install
 
@@ -67,8 +65,3 @@ cashgrab st-george transactions "residential loan s000 111 222 333" -r L30Days -
 cashgrab st-george transactions "complete freedom offset 000 111 222" --from 01/03/2026 --to 29/03/2026
 cashgrab st-george transactions "complete freedom offset 000 111 222" --from 2026-03-01 --to 2026-03-29
 ```
-
-## Cleaning
-
-- [St George](src/stg) -- CSV cleaning
-- [NAB](src/nab) -- QIF cleaning
