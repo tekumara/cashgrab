@@ -18,6 +18,7 @@ import { normalizeDateInput } from "./date-input.js";
 
 const SEARCH_URL =
   "https://online.bankwest.com.au/CMWeb/AccountInformation/TS/TransactionSearch.aspx";
+const LOGIN_URL = "https://online.bankwest.com.au/Session/PersonalLogin";
 const SEARCH_URL_PATTERN =
   /online\.bankwest\.com\.au\/CMWeb\/AccountInformation\/TS\/TransactionSearch\.aspx/;
 // Normalize CLI-provided options and enforce valid date-range combinations.
@@ -80,8 +81,12 @@ export async function bankwestTransactions(options) {
 
   const currentUrl = page.url();
   if (!SEARCH_URL_PATTERN.test(currentUrl)) {
+    await page
+      .goto(LOGIN_URL, { waitUntil: "domcontentloaded", timeout: 15000 })
+      .catch(() => {});
     console.error("✗ Not logged in. Expected transaction search page.");
     console.error(`  Current URL: ${currentUrl}`);
+    console.error(`  Opened:      ${LOGIN_URL}`);
     console.error("  Log in to Bankwest Online Banking first.");
     await browser.disconnect();
     process.exit(1);

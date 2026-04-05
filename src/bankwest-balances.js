@@ -13,6 +13,7 @@ import { connectToChrome } from "./connect-browser.js";
 
 const BALANCES_URL =
   "https://online.bankwest.com.au/CMWeb/AccountInformation/AI/Balances.aspx";
+const LOGIN_URL = "https://online.bankwest.com.au/Session/PersonalLogin";
 const EXPECTED_URL_PATTERN = /online\.bankwest\.com\.au\/CMWeb\/AccountInformation\/AI\/Balances\.aspx/;
 export async function bankwestBalances() {
   const browser = await connectToChrome().catch((e) => {
@@ -28,9 +29,13 @@ export async function bankwestBalances() {
 
   const currentUrl = page.url();
   if (!EXPECTED_URL_PATTERN.test(currentUrl)) {
+    await page
+      .goto(LOGIN_URL, { waitUntil: "domcontentloaded", timeout: 15000 })
+      .catch(() => {});
     console.error("✗ Not logged in. Expected Bankwest Account Balances page.");
     console.error(`  Current URL: ${currentUrl}`);
     console.error(`  Expected:    ${BALANCES_URL}`);
+    console.error(`  Opened:      ${LOGIN_URL}`);
     console.error("  Log in to Bankwest Online Banking first.");
     await browser.disconnect();
     process.exit(1);
