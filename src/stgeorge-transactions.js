@@ -11,8 +11,7 @@
  */
 
 import puppeteer from "puppeteer-core";
-import { mkdtemp, readdir, rename } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const PORTFOLIO_URL =
@@ -273,46 +272,86 @@ export async function stGeorgeTransactions(options) {
     `Range:   ${opts.range}${opts.from ? ` (${opts.from} - ${opts.to})` : ""}`
   );
 
-  const downloadDir = await mkdtemp(join(tmpdir(), "stgeorge-"));
+  // St.George export responses depend on transaction-history state being
+  // established first; jumping straight to export can return an empty CSV.
+  const historyResult = await page.evaluate(
+    async ({ index, selectedOption, from, to }) => {
+      const params = new URLSearchParams({
+        newPage: "1",
+        transactionHistoryPage: "false",
+        index: String(index),
+        selectedOption: String(selectedOption),
+        dateFrom: from ?? "",
+        dateTo: to ?? "",
+        selectedDrCrOption: "0",
+        selectedAmountFrom: "",
+        selectedAmountTo: "",
+        page: "1",
+        action: "transactionHistory",
+      });
 
-  const cdp = await page.createCDPSession();
-  await cdp.send("Page.setDownloadBehavior", {
-    behavior: "allow",
-    downloadPath: downloadDir,
-  });
+      const response = await fetch("showTransactionHistory.action", {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "content-type": "application/x-www-form-urlencoded; charset=UTF-8",
+        },
+        body: params.toString(),
+      });
 
-  await cdp.send("Runtime.evaluate", {
-    expression: `setTimeout(() => { window.location.href = ${JSON.stringify(
-      downloadUrl
-    )}; }, 50)`,
-  });
-
-  let downloadedFile = null;
-  for (let i = 0; i < 40; i++) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    const files = await readdir(downloadDir);
-    const csv = files.find(
-      (file) => file.endsWith(".csv") && !file.endsWith(".crdownload")
-    );
-    if (csv) {
-      downloadedFile = join(downloadDir, csv);
-      break;
+      return {
+        ok: response.ok,
+        status: response.status,
+      };
+    },
+    {
+      index: account.account.index,
+      selectedOption,
+      from: opts.from,
+      to: opts.to,
     }
-  }
+  );
 
-  if (!downloadedFile) {
-    console.error("✗ Export timed out - no .csv file received");
+  if (!historyResult.ok) {
+    console.error(
+      `✗ Transaction history request failed with HTTP ${historyResult.status}`
+    );
     await browser.disconnect();
     process.exit(1);
   }
 
-  const baseName = downloadedFile.split("/").pop().replace(/\.csv$/i, "");
+  const exportResult = await page.evaluate(async (url) => {
+    const response = await fetch(url, {
+      credentials: "include",
+    });
+    const content = await response.text();
+    const disposition = response.headers.get("content-disposition") ?? "";
+    const fileNameMatch = disposition.match(/filename="?([^"]+)"?/i);
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      content,
+      fileName: fileNameMatch?.[1] ?? null,
+    };
+  }, downloadUrl);
+
+  if (!exportResult.ok) {
+    console.error(`✗ Export failed with HTTP ${exportResult.status}`);
+    await browser.disconnect();
+    process.exit(1);
+  }
+
+  const baseName = (exportResult.fileName ?? "transactions.csv").replace(
+    /\.csv$/i,
+    ""
+  );
   const suffix = `${slugify(account.account.name)}_${slugify(
     account.account.accountNumber
   )}`;
   const outputFile = join(opts.outputDir, `${baseName}_${suffix}.csv`);
 
-  await rename(downloadedFile, outputFile);
+  await writeFile(outputFile, exportResult.content, "utf8");
 
   console.error(`✓ Exported: ${outputFile.split("/").pop()}`);
 
