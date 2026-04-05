@@ -38,6 +38,11 @@ function formatToday() {
   ).padStart(2, "0")}/${today.getFullYear()}`;
 }
 
+function countCsvTransactions(content) {
+  const lines = content.split(/\r?\n/).filter((line) => line.trim() !== "");
+  return Math.max(0, lines.length - 1);
+}
+
 export function normalizeStGeorgeTransactionOptions({
   accountQuery,
   range = "L30Days",
@@ -350,10 +355,12 @@ export async function stGeorgeTransactions(options) {
     account.account.accountNumber
   )}`;
   const outputFile = join(opts.outputDir, `${baseName}_${suffix}.csv`);
+  const transactionCount = countCsvTransactions(exportResult.content);
 
   await writeFile(outputFile, exportResult.content, "utf8");
 
   console.error(`✓ Exported: ${outputFile.split("/").pop()}`);
+  console.error(`Transactions: ${transactionCount}`);
 
   await browser.disconnect();
 }
