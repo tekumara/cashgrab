@@ -13,6 +13,7 @@ import puppeteer from "puppeteer-core";
 
 const BALANCES_URL =
   "https://ibanking.stgeorge.com.au/ibank/viewAccountPortfolio.html";
+const LOGIN_URL = "https://ibanking.stgeorge.com.au/ibank/loginPage.action";
 const CHROME_DEBUG_URL = "http://localhost:9222";
 
 function parseCurrency(value) {
@@ -98,9 +99,14 @@ export async function stGeorgeBalances() {
     };
   });
 
-  await browser.disconnect();
-
   if (data.accounts.length === 0) {
+    await page
+      .goto(LOGIN_URL, {
+        waitUntil: "domcontentloaded",
+        timeout: 15000,
+      })
+      .catch(() => {});
+    await browser.disconnect();
     console.error(
       "✗ Not logged in. Expected St.George account cards on the portfolio page."
     );
@@ -109,9 +115,12 @@ export async function stGeorgeBalances() {
     if (data.bodyText) {
       console.error(`  Page says:    ${data.bodyText}`);
     }
-    console.error("  Log in to St.George Internet Banking first.");
+    console.error(`  Opened:      ${LOGIN_URL}`);
+    console.error("  Log in to St.George Internet Banking and run the command again.");
     process.exit(1);
   }
+
+  await browser.disconnect();
 
   const accounts = data.accounts.map((account) => ({
     ...account,

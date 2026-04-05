@@ -16,6 +16,7 @@ import { join } from "node:path";
 
 const PORTFOLIO_URL =
   "https://ibanking.stgeorge.com.au/ibank/viewAccountPortfolio.html";
+const LOGIN_URL = "https://ibanking.stgeorge.com.au/ibank/loginPage.action";
 const CHROME_DEBUG_URL = "http://localhost:9222";
 
 const RANGE_TO_SELECTED_OPTION = {
@@ -155,6 +156,7 @@ export async function stGeorgeTransactions(options) {
         error: "Not logged in. Expected St.George account cards on the portfolio page.",
         currentUrl: location.href,
         available: [],
+        notLoggedIn: true,
       };
     }
 
@@ -183,9 +185,23 @@ export async function stGeorgeTransactions(options) {
   }, opts.accountQuery);
 
   if (account.error) {
+    if (account.notLoggedIn) {
+      await page
+        .goto(LOGIN_URL, {
+          waitUntil: "domcontentloaded",
+          timeout: 15000,
+        })
+        .catch(() => {});
+    }
     console.error(`✗ ${account.error}`);
     if (account.currentUrl) {
       console.error(`  Current URL: ${account.currentUrl}`);
+    }
+    if (account.notLoggedIn) {
+      console.error(`  Opened:      ${LOGIN_URL}`);
+      console.error(
+        "  Log in to St.George Internet Banking and run the command again."
+      );
     }
     if (account.available.length > 0) {
       console.error("  Available accounts:");
@@ -235,6 +251,22 @@ export async function stGeorgeTransactions(options) {
     !accountDetails.hasExportControl ||
     accountDetails.pageIndex !== String(accountDetails.expectedIndex)
   ) {
+    if (accountDetails.currentUrl.includes("loginPage.action")) {
+      await page
+        .goto(LOGIN_URL, {
+          waitUntil: "domcontentloaded",
+          timeout: 15000,
+        })
+        .catch(() => {});
+      console.error("✗ Not logged in to St.George Internet Banking.");
+      console.error(`  Current URL: ${accountDetails.currentUrl}`);
+      console.error(`  Opened:      ${LOGIN_URL}`);
+      console.error(
+        "  Log in to St.George Internet Banking and run the command again."
+      );
+      await browser.disconnect();
+      process.exit(1);
+    }
     console.error("✗ Could not load the St.George account details export page.");
     console.error(`  Current URL: ${accountDetails.currentUrl}`);
     if (accountDetails.bodyText) {
