@@ -48,7 +48,7 @@ export function normalizeTransactionOptions({
     process.exit(1);
   }
 
-  if (opts.from && opts.range !== "L30Days") {
+  if (opts.from && !["L30Days", "CUSTOM"].includes(opts.range)) {
     console.error("✗ Cannot use --range with --from/--to");
     process.exit(1);
   }
