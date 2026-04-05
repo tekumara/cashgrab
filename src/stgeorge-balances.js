@@ -9,12 +9,11 @@
  *   - Chrome running with --remote-debugging-port=9222
  *   - Logged in to St.George Internet Banking
  */
-import puppeteer from "puppeteer-core";
+import { connectToChrome } from "./connect-browser.js";
 
 const BALANCES_URL =
   "https://ibanking.stgeorge.com.au/ibank/viewAccountPortfolio.html";
 const LOGIN_URL = "https://ibanking.stgeorge.com.au/ibank/loginPage.action";
-const CHROME_DEBUG_URL = "http://localhost:9222";
 
 function parseCurrency(value) {
   if (typeof value !== "string") return null;
@@ -35,15 +34,7 @@ function formatCurrency(value) {
 }
 
 export async function stGeorgeBalances() {
-  const browser = await Promise.race([
-    puppeteer.connect({
-      browserURL: CHROME_DEBUG_URL,
-      defaultViewport: null,
-    }),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Connection timeout after 5s")), 5000)
-    ),
-  ]).catch((error) => {
+  const browser = await connectToChrome().catch((error) => {
     console.error("✗ Could not connect to Chrome:", error.message);
     console.error("  Make sure Chrome is running. Try: cashgrab browser");
     process.exit(1);

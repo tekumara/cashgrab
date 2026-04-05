@@ -10,17 +10,15 @@
  *   - Logged in to Bankwest Online Banking
  */
 
-import puppeteer from "puppeteer-core";
 import { mkdtemp, readdir, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { connectToChrome } from "./connect-browser.js";
 
 const SEARCH_URL =
   "https://online.bankwest.com.au/CMWeb/AccountInformation/TS/TransactionSearch.aspx";
 const SEARCH_URL_PATTERN =
   /online\.bankwest\.com\.au\/CMWeb\/AccountInformation\/TS\/TransactionSearch\.aspx/;
-const CHROME_DEBUG_URL = "http://localhost:9222";
-
 // Normalize CLI-provided options and enforce valid date-range combinations.
 export function normalizeTransactionOptions({
   accountQuery,
@@ -59,15 +57,7 @@ export function normalizeTransactionOptions({
 export async function bankwestTransactions(options) {
   const opts = normalizeTransactionOptions(options);
 
-  const browser = await Promise.race([
-    puppeteer.connect({
-      browserURL: CHROME_DEBUG_URL,
-      defaultViewport: null,
-    }),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Connection timeout after 5s")), 5000)
-    ),
-  ]).catch((e) => {
+  const browser = await connectToChrome().catch((e) => {
     console.error("✗ Could not connect to Chrome:", e.message);
     console.error("  Make sure Chrome is running. Try: cashgrab browser");
     process.exit(1);

@@ -10,14 +10,13 @@
  *   - Logged in to St.George Internet Banking
  */
 
-import puppeteer from "puppeteer-core";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { connectToChrome } from "./connect-browser.js";
 
 const PORTFOLIO_URL =
   "https://ibanking.stgeorge.com.au/ibank/viewAccountPortfolio.html";
 const LOGIN_URL = "https://ibanking.stgeorge.com.au/ibank/loginPage.action";
-const CHROME_DEBUG_URL = "http://localhost:9222";
 
 const RANGE_TO_SELECTED_OPTION = {
   L7Days: 0,
@@ -93,15 +92,7 @@ export function normalizeStGeorgeTransactionOptions({
 export async function stGeorgeTransactions(options) {
   const opts = normalizeStGeorgeTransactionOptions(options);
 
-  const browser = await Promise.race([
-    puppeteer.connect({
-      browserURL: CHROME_DEBUG_URL,
-      defaultViewport: null,
-    }),
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Connection timeout after 5s")), 5000)
-    ),
-  ]).catch((error) => {
+  const browser = await connectToChrome().catch((error) => {
     console.error("✗ Could not connect to Chrome:", error.message);
     console.error("  Make sure Chrome is running. Try: cashgrab browser");
     process.exit(1);
