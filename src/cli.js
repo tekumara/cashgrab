@@ -51,10 +51,10 @@ bankwest
 		"Date range preset: L7Days, L14Days, L30Days, L60Days, L90Days, LMONTH, SLMONTH, TLMONTH",
 		"L30Days",
 	)
-	.option("--from <date>", "Custom start date (DD/MM/YYYY), requires --to")
+	.option("--from <date>", "Custom start date (DD/MM/YYYY or YYYY-MM-DD), requires --to")
 	.option(
 		"--to <date>",
-		'Custom end date (DD/MM/YYYY or "today"), requires --from',
+		'Custom end date (DD/MM/YYYY, YYYY-MM-DD, or "today"), requires --from',
 	)
 	.option("-o, --output <dir>", "Output directory for the exported file")
 	.action(async (accountName, options) => {
@@ -93,10 +93,10 @@ stGeorge
 		"Date range preset: L7Days, L30Days",
 		"L30Days",
 	)
-	.option("--from <date>", "Custom start date (DD/MM/YYYY), requires --to")
+	.option("--from <date>", "Custom start date (DD/MM/YYYY or YYYY-MM-DD), requires --to")
 	.option(
 		"--to <date>",
-		'Custom end date (DD/MM/YYYY or "today"), requires --from',
+		'Custom end date (DD/MM/YYYY, YYYY-MM-DD, or "today"), requires --from',
 	)
 	.option("-o, --output <dir>", "Output directory for the exported file")
 	.action(async (accountName, options) => {

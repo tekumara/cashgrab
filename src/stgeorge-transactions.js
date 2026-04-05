@@ -13,6 +13,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { connectToChrome } from "./connect-browser.js";
+import { normalizeDateInput } from "./date-input.js";
 
 const PORTFOLIO_URL =
   "https://ibanking.stgeorge.com.au/ibank/viewAccountPortfolio.html";
@@ -67,9 +68,9 @@ export function normalizeStGeorgeTransactionOptions({
     opts.to = formatToday();
   }
 
-  // Accept DD-MM-YYYY (dashes) in addition to the canonical DD/MM/YYYY
-  if (opts.from) opts.from = opts.from.replace(/-/g, "/");
-  if (opts.to) opts.to = opts.to.replace(/-/g, "/");
+  // Normalize accepted CLI input formats to the DD/MM/YYYY form expected by St.George.
+  if (opts.from) opts.from = normalizeDateInput(opts.from);
+  if (opts.to) opts.to = normalizeDateInput(opts.to);
 
   if ((opts.from && !opts.to) || (opts.to && !opts.from)) {
     console.error("✗ Both --from and --to are required for custom date range");

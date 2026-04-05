@@ -14,6 +14,7 @@ import { mkdtemp, readdir, rename } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { connectToChrome } from "./connect-browser.js";
+import { normalizeDateInput } from "./date-input.js";
 
 const SEARCH_URL =
   "https://online.bankwest.com.au/CMWeb/AccountInformation/TS/TransactionSearch.aspx";
@@ -38,6 +39,9 @@ export function normalizeTransactionOptions({
     const d = new Date();
     opts.to = `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
   }
+
+  if (opts.from) opts.from = normalizeDateInput(opts.from);
+  if (opts.to) opts.to = normalizeDateInput(opts.to);
 
   if ((opts.from && !opts.to) || (opts.to && !opts.from)) {
     console.error("✗ Both --from and --to are required for custom date range");
