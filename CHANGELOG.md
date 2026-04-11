@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.0.2](https://github.com/tekumara/cashgrab/compare/v0.0.1...v0.0.2) (2026-04-11)
+
+
+### Features
+
+* add ASB balances scraping ([2775bd5](https://github.com/tekumara/cashgrab/commit/2775bd5f93c16c6eca12fa67cf5506a7637366d3))
+* add ASB statement downloads ([0a8881f](https://github.com/tekumara/cashgrab/commit/0a8881f945892e38d3193674a2f962628a3e3deb))
+
 ## [0.0.1](https://github.com/tekumara/cashgrab/compare/v0.0.0...v0.0.1) (2026-04-05)
 
 
