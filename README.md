@@ -56,6 +56,16 @@ Requires a logged-in ASB FastNet Classic session.
 cashgrab asb balances
 ```
 
+### Statement Download
+
+Downloads all matching statement PDFs in a date range. Use `--date` for an exact date, or `--from` and `--to` for a range. The optional query filters by account number, account name, or statement type. Pagination is handled automatically.
+
+```bash
+cashgrab asb statements 2026-03-05 orbit
+cashgrab asb statements visa --from 2025-10-01 --to 2026-03-31 -o ~/Downloads
+cashgrab asb statements orbit --date 2026-03-05
+```
+
 ## St.George
 
 Requires a logged-in St.George session.

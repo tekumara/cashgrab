@@ -3,6 +3,7 @@
 import { Command } from "commander";
 import { startBrowser } from "./browser-start.js";
 import { asbBalances } from "./asb-balances.js";
+import { asbStatements, normalizeAsbStatementOptions } from "./asb-statements.js";
 import { bankwestBalances } from "./bankwest-balances.js";
 import {
 	bankwestTransactions,
@@ -42,6 +43,36 @@ asb
 	.description("Print balances from the active ASB balances page")
 	.action(async () => {
 		await asbBalances();
+	});
+
+asb
+	.command("statements")
+	.description("Download ASB statement PDFs from the Document Centre")
+	.argument(
+		"[queryOrDate...]",
+		"Optional case-insensitive match against account number, account name, or statement type",
+	)
+	.option("--date <date>", "Exact statement date")
+	.option("--from <date>", "Range start date (requires --to)")
+	.option("--to <date>", "Range end date (requires --from)")
+	.option("-o, --output <dir>", "Output directory for the downloaded file")
+	.action(async (queryOrDate, options) => {
+		const tokens = queryOrDate ?? [];
+		const usingExplicitRange = !!(options.date || options.from || options.to);
+		const legacyDate = !usingExplicitRange ? tokens[0] : null;
+		const accountQuery = usingExplicitRange
+			? tokens.join(" ")
+			: tokens.slice(1).join(" ");
+
+		await asbStatements(
+			normalizeAsbStatementOptions({
+				date: options.date ?? legacyDate,
+				from: options.from,
+				to: options.to,
+				accountQuery,
+				outputDir: options.output,
+			}),
+		);
 	});
 
 bankwest
