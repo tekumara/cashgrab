@@ -2,6 +2,7 @@
 
 import { Command } from "commander";
 import { startBrowser } from "./browser-start.js";
+import { asbBalances } from "./asb-balances.js";
 import { bankwestBalances } from "./bankwest-balances.js";
 import {
 	bankwestTransactions,
@@ -31,6 +32,17 @@ program
 const bankwest = program
 	.command("bankwest")
 	.description("Bankwest scraping commands");
+
+const asb = program
+	.command("asb")
+	.description("ASB scraping commands");
+
+asb
+	.command("balances")
+	.description("Print balances from the active ASB balances page")
+	.action(async () => {
+		await asbBalances();
+	});
 
 bankwest
 	.command("balances")

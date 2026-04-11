@@ -4,6 +4,7 @@
 
 Supported banks:
 
+- **ASB** -- account balances
 - **Bankwest** -- account balances and transaction export (QIF)
 - **St.George** -- account balances and transaction export (CSV)
 
@@ -43,6 +44,16 @@ cashgrab bankwest transactions "offset joint" -r L30Days
 cashgrab bankwest transactions "home loan john" -r L90Days -o ~/Downloads
 cashgrab bankwest transactions "offset joint" --from 01/01/2026 --to 28/03/2026
 cashgrab bankwest transactions "offset joint" --from 2026-01-01 --to 2026-03-28
+```
+
+## ASB
+
+Requires a logged-in ASB FastNet Classic session.
+
+### Account Balances
+
+```bash
+cashgrab asb balances
 ```
 
 ## St.George
