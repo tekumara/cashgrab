@@ -3,7 +3,7 @@
 import { Command } from "commander";
 import { startBrowser } from "./browser-start.js";
 import { asbBalances } from "./asb-balances.js";
-import { asbStatements, normalizeAsbStatementOptions } from "./asb-statements.js";
+import { asbStatements } from "./asb-statements.js";
 import { bankwestBalances } from "./bankwest-balances.js";
 import {
 	bankwestTransactions,
@@ -64,15 +64,13 @@ asb
 			? tokens.join(" ")
 			: tokens.slice(1).join(" ");
 
-		await asbStatements(
-			normalizeAsbStatementOptions({
-				date: options.date ?? legacyDate,
-				from: options.from,
-				to: options.to,
-				accountQuery,
-				outputDir: options.output,
-			}),
-		);
+		await asbStatements({
+			date: options.date ?? legacyDate,
+			from: options.from,
+			to: options.to,
+			accountQuery,
+			outputDir: options.output,
+		});
 	});
 
 bankwest

@@ -4,7 +4,7 @@
 
 Supported banks:
 
-- **ASB** -- account balances
+- **ASB** -- account balances and statement download
 - **Bankwest** -- account balances and transaction export (QIF)
 - **St.George** -- account balances and transaction export (CSV)
 
@@ -25,6 +25,26 @@ cashgrab browser --profile
 
 The browser launches with its own profile directory (`~/.cache/browser-tools`). If Chrome is already running on `:9222`, the command exits immediately.
 
+## ASB
+
+Requires a logged-in ASB FastNet Classic session.
+
+### Account Balances
+
+```bash
+cashgrab asb balances
+```
+
+### Statement Download
+
+Downloads all matching statement PDFs in a date range. Use `--date` for an exact date, or `--from` and `--to` for a range. The optional query filters by account number, account name, or statement type. Pagination is handled automatically.
+
+```bash
+cashgrab asb statements 2026-03-05 orbit
+cashgrab asb statements visa --from 2025-10-01 --to 2026-03-31 -o ~/Downloads
+cashgrab asb statements orbit --date 2026-03-05
+```
+
 ## Bankwest
 
 Requires a logged-in Bankwest session.
@@ -44,26 +64,6 @@ cashgrab bankwest transactions "offset joint" -r L30Days
 cashgrab bankwest transactions "home loan john" -r L90Days -o ~/Downloads
 cashgrab bankwest transactions "offset joint" --from 01/01/2026 --to 28/03/2026
 cashgrab bankwest transactions "offset joint" --from 2026-01-01 --to 2026-03-28
-```
-
-## ASB
-
-Requires a logged-in ASB FastNet Classic session.
-
-### Account Balances
-
-```bash
-cashgrab asb balances
-```
-
-### Statement Download
-
-Downloads all matching statement PDFs in a date range. Use `--date` for an exact date, or `--from` and `--to` for a range. The optional query filters by account number, account name, or statement type. Pagination is handled automatically.
-
-```bash
-cashgrab asb statements 2026-03-05 orbit
-cashgrab asb statements visa --from 2025-10-01 --to 2026-03-31 -o ~/Downloads
-cashgrab asb statements orbit --date 2026-03-05
 ```
 
 ## St.George

@@ -123,13 +123,8 @@ export function normalizeAsbStatementOptions({
   };
 
   if (opts.date && (opts.from || opts.to)) {
-    const isEquivalentExactDate =
-      opts.from === opts.date && opts.to === opts.date;
-
-    if (!isEquivalentExactDate) {
-      console.error("✗ Use either --date or --from/--to, not both");
-      process.exit(1);
-    }
+    console.error("✗ Use either --date or --from/--to, not both");
+    process.exit(1);
   }
 
   if ((opts.from && !opts.to) || (!opts.from && opts.to)) {
@@ -315,11 +310,13 @@ export async function asbStatements(options) {
     pageNumber: 1,
   });
 
-  const allRows = [];
+  const rowsByHref = new Map();
   let pageData = await extractStatementsPage(page);
 
   while (true) {
-    allRows.push(...pageData.rows);
+    for (const row of pageData.rows) {
+      rowsByHref.set(row.href, row);
+    }
 
     if (pageData.currentPage >= pageData.totalPages) {
       break;
@@ -333,17 +330,12 @@ export async function asbStatements(options) {
     pageData = await extractStatementsPage(page);
   }
 
-  const seenHrefs = new Set();
-  const rows = allRows.filter((row) => {
-    if (seenHrefs.has(row.href)) return false;
-    seenHrefs.add(row.href);
-    return true;
-  });
+  const rows = Array.from(rowsByHref.values());
+  const query = opts.accountQuery.toLowerCase();
 
   const matchingStatements = rows.filter(
     (row) =>
-      /statement/i.test(row.type) &&
-      (!opts.accountQuery || row.matchText.includes(opts.accountQuery.toLowerCase()))
+      /statement/i.test(row.type) && (!query || row.matchText.includes(query))
   );
 
   if (matchingStatements.length === 0) {
