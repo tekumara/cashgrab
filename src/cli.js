@@ -5,6 +5,7 @@ import { startBrowser } from "./browser-start.js";
 import { asbBalances } from "./asb-balances.js";
 import { asbStatements } from "./asb-statements.js";
 import { bankwestBalances } from "./bankwest-balances.js";
+import { dodoInvoices } from "./dodo-invoices.js";
 import {
 	bankwestTransactions,
 	normalizeTransactionOptions,
@@ -44,6 +45,10 @@ const bankwest = program
 const asb = program
 	.command("asb")
 	.description("ASB scraping commands");
+
+const dodo = program
+	.command("dodo")
+	.description("Dodo scraping commands");
 
 asb
 	.command("balances")
@@ -160,6 +165,22 @@ stGeorge
 				outputDir: options.output,
 			}),
 		);
+	});
+
+dodo
+	.command("invoices")
+	.description("Download invoice PDFs from the open Dodo billing overview service page")
+	.option("--date <date>", "Exact invoice date")
+	.option("--from <date>", "Range start date (requires --to)")
+	.option("--to <date>", "Range end date (requires --from)")
+	.option("-o, --output <dir>", "Output directory for the downloaded files")
+	.action(async (options) => {
+		await dodoInvoices({
+			date: options.date,
+			from: options.from,
+			to: options.to,
+			outputDir: options.output,
+		});
 	});
 
 await program.parseAsync(process.argv);

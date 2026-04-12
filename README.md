@@ -1,11 +1,12 @@
 # cashgrab
 
-`cashgrab` is a local CLI that scrapes banking websites. It launches a dedicated Chrome instance, connects over remote debugging (CDP), and automates pulling account data. It never sees your credentials - these stay within Chrome and must be manually entered.
+`cashgrab` is a local CLI that scrapes banking and utilities websites. It launches a dedicated Chrome instance, connects over remote debugging (CDP), and automates pulling account data. It never sees your credentials - these stay within Chrome and must be manually entered.
 
-Supported banks:
+Supported:
 
 - **ASB** -- account balances and statement download
 - **Bankwest** -- account balances and transaction export (QIF)
+- **Dodo** -- invoice PDF download
 - **St.George** -- account balances and transaction export (CSV)
 
 ## Install
@@ -63,6 +64,15 @@ cashgrab bankwest transactions "offset joint" -r L30Days
 cashgrab bankwest transactions "home loan john" -r L90Days -o ~/Downloads
 cashgrab bankwest transactions "offset joint" --from 01/01/2026 --to 28/03/2026
 cashgrab bankwest transactions "offset joint" --from 2026-01-01 --to 2026-03-28
+```
+
+## Dodo
+
+Requires a logged-in My Dodo session. Open the desired `https://my.dodo.com/billing-overview...` service page first, then run the command. The downloader switches to the previous invoices tab and saves every matching invoice PDF.
+
+```bash
+cashgrab dodo invoices --from 2026-01-01 --to 2026-03-31 -o ~/Downloads
+cashgrab dodo invoices --date 2026-03-05
 ```
 
 ## St.George
