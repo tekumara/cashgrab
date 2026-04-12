@@ -142,8 +142,14 @@ export function normalizeAsbStatementOptions({
     process.exit(1);
   }
 
-  if (!isNormalizedDate(opts.from) || !isNormalizedDate(opts.to)) {
-    console.error("✗ Unsupported date format");
+  const invalidDateValues = [...new Set([opts.date, opts.from, opts.to].filter(
+    (value) => value && !isNormalizedDate(value)
+  ))];
+
+  if (invalidDateValues.length > 0) {
+    console.error(
+      `✗ Unsupported date format: ${invalidDateValues.map((value) => `"${value}"`).join(", ")}`
+    );
     console.error("  Use DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, or \"today\"");
     process.exit(1);
   }

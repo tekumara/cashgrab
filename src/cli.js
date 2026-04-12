@@ -9,6 +9,7 @@ import {
 	bankwestTransactions,
 	normalizeTransactionOptions,
 } from "./bankwest-transactions.js";
+import { normalizeDateInput } from "./date-input.js";
 import { stGeorgeBalances } from "./stgeorge-balances.js";
 import {
 	normalizeStGeorgeTransactionOptions,
@@ -16,6 +17,12 @@ import {
 } from "./stgeorge-transactions.js";
 
 const program = new Command();
+
+function isCliDateToken(value) {
+	if (!value) return false;
+	if (value === "today") return true;
+	return /^\d{2}\/\d{2}\/\d{4}$/.test(normalizeDateInput(value));
+}
 
 program
 	.name("cashgrab")
@@ -49,26 +56,29 @@ asb
 	.command("statements")
 	.description("Download ASB statement PDFs from the Document Centre")
 	.argument(
-		"[queryOrDate...]",
+		"[query...]",
 		"Optional case-insensitive match against account number, account name, or statement type",
 	)
 	.option("--date <date>", "Exact statement date")
 	.option("--from <date>", "Range start date (requires --to)")
 	.option("--to <date>", "Range end date (requires --from)")
 	.option("-o, --output <dir>", "Output directory for the downloaded file")
-	.action(async (queryOrDate, options) => {
-		const tokens = queryOrDate ?? [];
-		const usingExplicitRange = !!(options.date || options.from || options.to);
-		const legacyDate = !usingExplicitRange ? tokens[0] : null;
-		const accountQuery = usingExplicitRange
-			? tokens.join(" ")
-			: tokens.slice(1).join(" ");
+	.action(async (query, options) => {
+		const tokens = query ?? [];
+
+		if (!(options.date || options.from || options.to)) {
+			const positionalDates = tokens.filter(isCliDateToken);
+			if (positionalDates.length > 0) {
+				console.error("✗ Use --date <date> or --from <date> --to <date>");
+				process.exit(1);
+			}
+		}
 
 		await asbStatements({
-			date: options.date ?? legacyDate,
+			date: options.date,
 			from: options.from,
 			to: options.to,
-			accountQuery,
+			accountQuery: tokens.join(" "),
 			outputDir: options.output,
 		});
 	});
