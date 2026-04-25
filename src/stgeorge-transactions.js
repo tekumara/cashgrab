@@ -3,7 +3,8 @@
  *
  * Connects to a running Chrome instance (CDP on localhost:9222),
  * navigates from the St.George account portfolio page to the matched
- * account details page, then exports transactions as CSV.
+ * account details page, then either exports transactions as CSV or
+ * pages through the HTML transaction history and writes its own CSV.
  *
  * Prerequisites:
  *   - Chrome running with --remote-debugging-port=9222
@@ -25,6 +26,12 @@ const RANGE_TO_SELECTED_OPTION = {
   CUSTOM: 2,
 };
 
+const RANGE_TO_PANEL_ID = {
+  L7Days: "transaction-7days",
+  L30Days: "transaction-30days",
+  CUSTOM: "transaction-date-range",
+};
+
 function slugify(value) {
   return String(value)
     .trim()
@@ -39,9 +46,322 @@ function formatToday() {
   ).padStart(2, "0")}/${today.getFullYear()}`;
 }
 
+function formatDateForFileName(value) {
+  const match = String(value ?? "").match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) {
+    return slugify(value);
+  }
+
+  const [, day, month, year] = match;
+  return `${year}-${month}-${day}`;
+}
+
 function countCsvTransactions(content) {
   const lines = content.split(/\r?\n/).filter((line) => line.trim() !== "");
   return Math.max(0, lines.length - 1);
+}
+
+function csvEscape(value) {
+  const text = String(value ?? "");
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
+
+function buildTransactionsCsv(rows) {
+  const headers = ["Date", "Description", "Category", "Debit", "Credit", "Balance"];
+  const lines = [
+    headers.join(","),
+    ...rows.map((row) =>
+      [
+        row.date,
+        row.description,
+        row.category,
+        row.debit,
+        row.credit,
+        row.balance,
+      ]
+        .map(csvEscape)
+        .join(",")
+    ),
+  ];
+
+  return `${lines.join("\n")}\n`;
+}
+
+function buildHtmlExportBaseName({ range, from, to }) {
+  if (from && to) {
+    if (from === to) {
+      return `transactions_html_${formatDateForFileName(from)}`;
+    }
+
+    return `transactions_html_${formatDateForFileName(from)}_to_${formatDateForFileName(
+      to
+    )}`;
+  }
+
+  return `transactions_html_${String(range).toLowerCase()}`;
+}
+
+async function extractHtmlTransactions(page, { range, selectedOption, from, to }) {
+  return page.evaluate(
+    async ({ panelId, selectedOption, from, to }) => {
+      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+      const normalizeText = (value) => value?.replace(/\s+/g, " ").trim() ?? "";
+      const panel = document.getElementById(panelId);
+
+      if (!panel) {
+        return {
+          error: `Could not find transaction history panel "${panelId}".`,
+          currentUrl: location.href,
+        };
+      }
+
+      const getTableBody = () => panel.querySelector("#th-table-body");
+      const getPagination = () => {
+        const recordText = normalizeText(
+          panel.querySelector("div.pagination .record-count")?.textContent ?? ""
+        );
+        const pageMatch = recordText.match(/Page\s+(\d+)\s+of\s+(\d+)/i);
+        const selectedText = normalizeText(
+          panel.querySelector("div.pagination a.selected")?.textContent ?? ""
+        );
+
+        return {
+          currentPage:
+            Number(selectedText) || (pageMatch ? Number(pageMatch[1]) : 1),
+          totalPages: pageMatch ? Number(pageMatch[2]) : 1,
+          recordText,
+        };
+      };
+
+      const extractRowsFromPanel = () => {
+        const headings = Array.from(panel.querySelectorAll("thead th")).map((th) =>
+          normalizeText(th.textContent).toLowerCase()
+        );
+        const indexFor = (label) => headings.indexOf(label.toLowerCase());
+        const dateIndex = indexFor("date");
+        const descriptionIndex = indexFor("description");
+        const categoryIndex = indexFor("category");
+        const debitIndex = indexFor("debit");
+        const creditIndex = indexFor("credit");
+        const balanceIndex = indexFor("balance");
+
+        return Array.from(panel.querySelectorAll("#th-table-body tr"))
+          .map((tr) =>
+            Array.from(tr.querySelectorAll("td")).map((td) =>
+              normalizeText(td.innerText || td.textContent)
+            )
+          )
+          .map((cells) => ({
+            date: cells[dateIndex] ?? "",
+            description: cells[descriptionIndex] ?? "",
+            category: categoryIndex >= 0 ? cells[categoryIndex] ?? "" : "",
+            debit: cells[debitIndex] ?? "",
+            credit: cells[creditIndex] ?? "",
+            balance: balanceIndex >= 0 ? cells[balanceIndex] ?? "" : "",
+          }))
+          .filter((row) => /^\d{2}\/\d{2}\/\d{4}$/.test(row.date));
+      };
+
+      const waitForPanelUpdate = (expectedPage, previousSignature) =>
+        new Promise((resolve, reject) => {
+          const deadline = Date.now() + 20000;
+          let spinnerSeen = false;
+
+          const tick = () => {
+            const errorText = normalizeText(
+              document.getElementById("actionError")?.textContent ?? ""
+            );
+            if (errorText) {
+              resolve({ error: errorText });
+              return;
+            }
+
+            const body = getTableBody();
+            const signature = body?.innerHTML ?? "";
+            const rows = Array.from(panel.querySelectorAll("#th-table-body tr"));
+            const spinner = !!panel.querySelector(".spin");
+            const noTransactions = rows.some((row) =>
+              /No transactions found/i.test(normalizeText(row.textContent))
+            );
+            const pagination = getPagination();
+            const hasPagination = !!panel.querySelector("div.pagination");
+            const pageMatches = hasPagination
+              ? pagination.currentPage === expectedPage
+              : expectedPage === 1;
+
+            if (spinner) {
+              spinnerSeen = true;
+            }
+
+            if (
+              !spinner &&
+              rows.length > 0 &&
+              pageMatches &&
+              (spinnerSeen || signature !== previousSignature || noTransactions)
+            ) {
+              resolve({ pagination, noTransactions });
+              return;
+            }
+
+            if (Date.now() > deadline) {
+              reject(new Error(`Timed out waiting for transaction page ${expectedPage}`));
+              return;
+            }
+
+            setTimeout(tick, 100);
+          };
+
+          tick();
+        });
+
+      const waitForPaginationToSettle = async () => {
+        const deadline = Date.now() + 5000;
+        let stableTicks = 0;
+        let lastPaginationMarkup = panel.querySelector("div.pagination")?.innerHTML ?? "";
+
+        while (Date.now() < deadline) {
+          const errorText = normalizeText(
+            document.getElementById("actionError")?.textContent ?? ""
+          );
+          if (errorText) {
+            return { error: errorText };
+          }
+
+          const pagination = getPagination();
+          if (pagination.recordText) {
+            return pagination;
+          }
+
+          const paginationMarkup = panel.querySelector("div.pagination")?.innerHTML ?? "";
+          const visibleRowCount = panel.querySelectorAll("#th-table-body tr").length;
+          const extractedRowCount = extractRowsFromPanel().length;
+          const pageLooksFull = visibleRowCount >= 25 || extractedRowCount >= 24;
+
+          if (paginationMarkup !== lastPaginationMarkup) {
+            lastPaginationMarkup = paginationMarkup;
+            stableTicks = 0;
+          } else {
+            stableTicks += 1;
+          }
+
+          if (!pageLooksFull && stableTicks >= 5) {
+            return getPagination();
+          }
+
+          await sleep(100);
+        }
+
+        return getPagination();
+      };
+
+      const setFieldValue = (selector, value) => {
+        const input = panel.querySelector(selector);
+        if (!input) return false;
+        input.value = value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+        return true;
+      };
+
+      const tabLink = document.querySelector(`#transhisttabs a[href="#${panelId}"]`);
+      tabLink?.click();
+      await sleep(150);
+
+      if (selectedOption === 2) {
+        const hasFromField = setFieldValue("#acctDetDateFrom", from ?? "");
+        const hasToField = setFieldValue("#acctDetDateTo", to ?? "");
+        const searchButton = panel.querySelector('input[name="go"]');
+
+        if (!hasFromField || !hasToField || !searchButton) {
+          return {
+            error: "Could not find the St.George custom date transaction search controls.",
+            currentUrl: location.href,
+          };
+        }
+
+        const previousSignature = getTableBody()?.innerHTML ?? "";
+        searchButton.click();
+        const firstLoad = await waitForPanelUpdate(1, previousSignature).catch(
+          (error) => ({ error: error.message })
+        );
+
+        if (firstLoad?.error) {
+          return {
+            error: firstLoad.error,
+            currentUrl: location.href,
+          };
+        }
+      }
+
+      const settledPagination = await waitForPaginationToSettle();
+      if (settledPagination?.error) {
+        return {
+          error: settledPagination.error,
+          currentUrl: location.href,
+        };
+      }
+
+      const initialRows = extractRowsFromPanel();
+      const initialPagination = settledPagination?.recordText
+        ? settledPagination
+        : getPagination();
+      const dedupedRows = [];
+      const seen = new Set();
+
+      const addRows = (rows) => {
+        for (const row of rows) {
+          const key = JSON.stringify(row);
+          if (!seen.has(key)) {
+            seen.add(key);
+            dedupedRows.push(row);
+          }
+        }
+      };
+
+      addRows(initialRows);
+
+      if (initialPagination.totalPages > 1) {
+        if (typeof getNextPage !== "function") {
+          return {
+            error: "St.George pagination controls are unavailable on the transaction history page.",
+            currentUrl: location.href,
+          };
+        }
+
+        for (let pageNumber = 2; pageNumber <= initialPagination.totalPages; pageNumber++) {
+          const previousSignature = getTableBody()?.innerHTML ?? "";
+          getNextPage(String(pageNumber));
+
+          const pageState = await waitForPanelUpdate(
+            pageNumber,
+            previousSignature
+          ).catch((error) => ({ error: error.message }));
+
+          if (pageState?.error) {
+            return {
+              error: pageState.error,
+              currentUrl: location.href,
+            };
+          }
+
+          addRows(extractRowsFromPanel());
+        }
+      }
+
+      return {
+        currentUrl: location.href,
+        panelId,
+        totalPages: initialPagination.totalPages,
+        rows: dedupedRows,
+      };
+    },
+    {
+      panelId: RANGE_TO_PANEL_ID[range],
+      selectedOption,
+      from,
+      to,
+    }
+  );
 }
 
 export function normalizeStGeorgeTransactionOptions({
@@ -49,6 +369,8 @@ export function normalizeStGeorgeTransactionOptions({
   range = "L30Days",
   from = null,
   to = null,
+  date = null,
+  html = false,
   outputDir = process.cwd(),
 } = {}) {
   const opts = {
@@ -56,6 +378,8 @@ export function normalizeStGeorgeTransactionOptions({
     range,
     from,
     to,
+    date,
+    html: Boolean(html),
     outputDir: outputDir ?? process.cwd(),
   };
 
@@ -68,9 +392,29 @@ export function normalizeStGeorgeTransactionOptions({
     opts.to = formatToday();
   }
 
+  if (opts.date === "today") {
+    opts.date = formatToday();
+  }
+
+  if (opts.date) {
+    opts.date = normalizeDateInput(opts.date);
+  }
+
   // Normalize accepted CLI input formats to the DD/MM/YYYY form expected by St.George.
   if (opts.from) opts.from = normalizeDateInput(opts.from);
   if (opts.to) opts.to = normalizeDateInput(opts.to);
+
+  if (opts.date && (opts.from || opts.to)) {
+    console.error("✗ --date cannot be combined with --from/--to");
+    process.exit(1);
+  }
+
+  if (opts.date) {
+    opts.from = opts.date;
+    opts.to = opts.date;
+    opts.range = "CUSTOM";
+    opts.date = null;
+  }
 
   if ((opts.from && !opts.to) || (opts.to && !opts.from)) {
     console.error("✗ Both --from and --to are required for custom date range");
@@ -81,7 +425,7 @@ export function normalizeStGeorgeTransactionOptions({
     opts.range = "CUSTOM";
   }
 
-  if (!["L7Days", "L30Days", "CUSTOM"].includes(opts.range)) {
+  if (!Object.hasOwn(RANGE_TO_SELECTED_OPTION, opts.range)) {
     console.error(`✗ Unsupported St.George range "${opts.range}"`);
     console.error("  Supported ranges: L7Days, L30Days, or --from/--to");
     process.exit(1);
@@ -269,6 +613,49 @@ export async function stGeorgeTransactions(options) {
   }
 
   const selectedOption = RANGE_TO_SELECTED_OPTION[opts.range];
+  const suffix = `${slugify(account.account.name)}_${slugify(
+    account.account.accountNumber
+  )}`;
+
+  console.error(`Account: ${account.account.label}`);
+  console.error(
+    `Range:   ${opts.range}${opts.from ? ` (${opts.from} - ${opts.to})` : ""}`
+  );
+
+  if (opts.html) {
+    const htmlResult = await extractHtmlTransactions(page, {
+      range: opts.range,
+      selectedOption,
+      from: opts.from,
+      to: opts.to,
+    });
+
+    if (htmlResult.error) {
+      console.error(`✗ ${htmlResult.error}`);
+      if (htmlResult.currentUrl) {
+        console.error(`  Current URL: ${htmlResult.currentUrl}`);
+      }
+      await browser.disconnect();
+      process.exit(1);
+    }
+
+    const outputFile = join(
+      opts.outputDir,
+      `${buildHtmlExportBaseName(opts)}_${suffix}.csv`
+    );
+    const csvContent = buildTransactionsCsv(htmlResult.rows);
+
+    await writeFile(outputFile, csvContent, "utf8");
+
+    console.error("Mode:    HTML transaction history");
+    console.error(`Pages:   ${htmlResult.totalPages}`);
+    console.error(`✓ Exported: ${outputFile.split("/").pop()}`);
+    console.error(`Transactions: ${htmlResult.rows.length}`);
+
+    await browser.disconnect();
+    return;
+  }
+
   const downloadUrl = await page.evaluate(
     ({ index, selectedOption, from, to }) => {
       const params = new URLSearchParams({
@@ -294,11 +681,6 @@ export async function stGeorgeTransactions(options) {
       from: opts.from,
       to: opts.to,
     }
-  );
-
-  console.error(`Account: ${account.account.label}`);
-  console.error(
-    `Range:   ${opts.range}${opts.from ? ` (${opts.from} - ${opts.to})` : ""}`
   );
 
   // St.George export responses depend on transaction-history state being
@@ -375,9 +757,6 @@ export async function stGeorgeTransactions(options) {
     /\.csv$/i,
     ""
   );
-  const suffix = `${slugify(account.account.name)}_${slugify(
-    account.account.accountNumber
-  )}`;
   const outputFile = join(opts.outputDir, `${baseName}_${suffix}.csv`);
   const transactionCount = countCsvTransactions(exportResult.content);
 

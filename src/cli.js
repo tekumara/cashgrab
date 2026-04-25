@@ -139,7 +139,7 @@ stGeorge
 
 stGeorge
 	.command("transactions")
-	.description("Export transactions as a CSV file")
+	.description("Export or extract transactions as a CSV file")
 	.argument(
 		"<accountName...>",
 		"Case-insensitive substring match against account name, account number, or BSB",
@@ -149,19 +149,23 @@ stGeorge
 		"Date range preset: L7Days, L30Days",
 		"L30Days",
 	)
+	.option("--date <date>", "Single transaction date (DD/MM/YYYY, DD-MM-YYYY, or YYYY-MM-DD)")
 	.option("--from <date>", "Custom start date (DD/MM/YYYY or YYYY-MM-DD), requires --to")
 	.option(
 		"--to <date>",
 		'Custom end date (DD/MM/YYYY, YYYY-MM-DD, or "today"), requires --from',
 	)
+	.option("--html", "Extract the visible transaction history pages into CSV instead of using the export endpoint")
 	.option("-o, --output <dir>", "Output directory for the exported file")
 	.action(async (accountName, options) => {
 		await stGeorgeTransactions(
 			normalizeStGeorgeTransactionOptions({
 				accountQuery: accountName.join(" "),
 				range: options.range,
+				date: options.date,
 				from: options.from,
 				to: options.to,
+				html: options.html,
 				outputDir: options.output,
 			}),
 		);

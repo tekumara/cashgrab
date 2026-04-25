@@ -89,9 +89,13 @@ cashgrab st-george balances
 
 Exports transactions as a CSV file. The account name is a case-insensitive substring match against the portfolio accounts.
 
+Use `--html` to page through the on-screen transaction history and write a CSV with `Date, Description, Category, Debit, Credit, Balance` columns.
+
 ```bash
 cashgrab st-george transactions "000 111 222" -r L7Days
 cashgrab st-george transactions "residential loan s000 111 222 333" -r L30Days -o ~/Downloads
 cashgrab st-george transactions "complete freedom offset 000 111 222" --from 01/03/2026 --to 29/03/2026
 cashgrab st-george transactions "complete freedom offset 000 111 222" --from 2026-03-01 --to 2026-03-29
+cashgrab st-george transactions "complete freedom offset 000 111 222" --html --date 2026-03-29
+cashgrab st-george transactions "complete freedom offset 000 111 222" --html --from 2026-03-01 --to 2026-03-29
 ```
