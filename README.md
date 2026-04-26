@@ -87,9 +87,9 @@ cashgrab st-george balances
 
 ### Transaction Export
 
-Exports transactions as a CSV file. The account name is a case-insensitive substring match against the portfolio accounts.
+Exports transactions as a CSV file. The account name is a case-insensitive substring match against the portfolio accounts. Downloaded CSV exports include derived `Payee` and `Notes` columns.
 
-Use `--html` to page through the on-screen transaction history and write a CSV with `Date, Description, Category, Debit, Credit, Balance` columns.
+Use `--html` to page through the on-screen transaction history and write a CSV with `Date, Description, Payee, Notes, Category, Debit, Credit, Balance` columns.
 
 ```bash
 cashgrab st-george transactions "000 111 222" -r L7Days

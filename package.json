@@ -13,6 +13,9 @@
     "type": "git",
     "url": "git+https://github.com/tekumara/cashgrab.git"
   },
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "commander": "^14.0.3",
     "puppeteer-core": "^23.11.1"

@@ -15,6 +15,11 @@ import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { connectToChrome } from "./connect-browser.js";
 import { normalizeDateInput } from "./date-input.js";
+import {
+  buildStGeorgeTransactionsCsv,
+  countCsvRecords,
+  normalizeStGeorgeDownloadCsv,
+} from "./stgeorge-transaction-normalization.js";
 
 const PORTFOLIO_URL =
   "https://ibanking.stgeorge.com.au/ibank/viewAccountPortfolio.html";
@@ -54,37 +59,6 @@ function formatDateForFileName(value) {
 
   const [, day, month, year] = match;
   return `${year}-${month}-${day}`;
-}
-
-function countCsvTransactions(content) {
-  const lines = content.split(/\r?\n/).filter((line) => line.trim() !== "");
-  return Math.max(0, lines.length - 1);
-}
-
-function csvEscape(value) {
-  const text = String(value ?? "");
-  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-}
-
-function buildTransactionsCsv(rows) {
-  const headers = ["Date", "Description", "Category", "Debit", "Credit", "Balance"];
-  const lines = [
-    headers.join(","),
-    ...rows.map((row) =>
-      [
-        row.date,
-        row.description,
-        row.category,
-        row.debit,
-        row.credit,
-        row.balance,
-      ]
-        .map(csvEscape)
-        .join(",")
-    ),
-  ];
-
-  return `${lines.join("\n")}\n`;
 }
 
 function buildHtmlExportBaseName({ range, from, to }) {
@@ -643,7 +617,7 @@ export async function stGeorgeTransactions(options) {
       opts.outputDir,
       `${buildHtmlExportBaseName(opts)}_${suffix}.csv`
     );
-    const csvContent = buildTransactionsCsv(htmlResult.rows);
+    const csvContent = buildStGeorgeTransactionsCsv(htmlResult.rows);
 
     await writeFile(outputFile, csvContent, "utf8");
 
@@ -758,9 +732,10 @@ export async function stGeorgeTransactions(options) {
     ""
   );
   const outputFile = join(opts.outputDir, `${baseName}_${suffix}.csv`);
-  const transactionCount = countCsvTransactions(exportResult.content);
+  const normalizedContent = normalizeStGeorgeDownloadCsv(exportResult.content);
+  const transactionCount = countCsvRecords(normalizedContent);
 
-  await writeFile(outputFile, exportResult.content, "utf8");
+  await writeFile(outputFile, normalizedContent, "utf8");
 
   console.error(`✓ Exported: ${outputFile.split("/").pop()}`);
   console.error(`Transactions: ${transactionCount}`);
