@@ -16,6 +16,9 @@ const HTML_CSV_HEADERS = [
   "Balance",
 ];
 
+// St.George descriptions often use padded spacing for visual alignment.
+// Normalize whitespace before deriving fields so Payee/Notes are emitted in a
+// stable, cleaned form rather than preserving those alignment spaces.
 function normalizeDescriptionText(description) {
   return String(description ?? "").replace(/\s+/g, " ").trim();
 }

@@ -132,6 +132,15 @@ test("buildStGeorgeTransactionsCsv includes derived Payee and Notes columns", ()
   );
 });
 
+test("deriveStGeorgePayee normalizes padded whitespace in descriptions", () => {
+  assert.equal(
+    deriveStGeorgePayee(
+      "Eftpos Debit                  REF123 Anon                Merchant 01 AU"
+    ),
+    "Anon Merchant 01 AU"
+  );
+});
+
 test("normalizeStGeorgeDownloadCsv injects Payee and Notes after Description", () => {
   const input = buildCsv(
     [
