@@ -1,18 +1,40 @@
 const NOTES_PREFIX_PATTERN = /^(?:Visa Purchase(?: O\/Seas)?|Visa Credit(?: Overseas)?|Osko Withdrawal|Osko Deposit|Sct Deposit|Eftpos Debit|Eftpos Credit|Tfr Wdl BPAY Internet|(?:Cardless )?Atm Withdrawal(?: -Wbc)?|Internet Deposit|Internet Withdrawal)/;
 const PAYEE_PREFIX_PATTERN = new RegExp(`${NOTES_PREFIX_PATTERN.source}\\s+\\S+\\s`);
+const DERIVED_COLUMNS = [
+  { header: "Payee", key: "payee" },
+  { header: "Notes", key: "notes" },
+];
+const REPLACED_COLUMN_NAMES = new Set(["payee", "notes"]);
+const HTML_CSV_HEADERS = [
+  "Date",
+  "Description",
+  "Payee",
+  "Notes",
+  "Category",
+  "Debit",
+  "Credit",
+  "Balance",
+];
 
 function normalizeDescriptionText(description) {
   return String(description ?? "").replace(/\s+/g, " ").trim();
 }
 
-export function deriveStGeorgePayee(description) {
+function deriveStGeorgeFields(description) {
   const text = normalizeDescriptionText(description);
-  return text.replace(PAYEE_PREFIX_PATTERN, "").trim();
+
+  return {
+    payee: text.replace(PAYEE_PREFIX_PATTERN, "").trim(),
+    notes: text.match(NOTES_PREFIX_PATTERN)?.[0] ?? "",
+  };
+}
+
+export function deriveStGeorgePayee(description) {
+  return deriveStGeorgeFields(description).payee;
 }
 
 export function deriveStGeorgeNotes(description) {
-  const text = normalizeDescriptionText(description);
-  return text.match(NOTES_PREFIX_PATTERN)?.[0] ?? "";
+  return deriveStGeorgeFields(description).notes;
 }
 
 function parseCsv(content) {
@@ -21,6 +43,13 @@ function parseCsv(content) {
   let row = [];
   let field = "";
   let inQuotes = false;
+
+  const finishRow = () => {
+    row.push(field);
+    rows.push(row);
+    row = [];
+    field = "";
+  };
 
   for (let index = 0; index < text.length; index += 1) {
     const char = text[index];
@@ -39,42 +68,30 @@ function parseCsv(content) {
       continue;
     }
 
-    if (char === '"') {
-      inQuotes = true;
-      continue;
+    switch (char) {
+      case '"':
+        inQuotes = true;
+        break;
+      case ",":
+        row.push(field);
+        field = "";
+        break;
+      case "\r":
+        if (text[index + 1] === "\n") {
+          index += 1;
+        }
+        finishRow();
+        break;
+      case "\n":
+        finishRow();
+        break;
+      default:
+        field += char;
     }
-
-    if (char === ",") {
-      row.push(field);
-      field = "";
-      continue;
-    }
-
-    if (char === "\r") {
-      if (text[index + 1] === "\n") {
-        index += 1;
-      }
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = "";
-      continue;
-    }
-
-    if (char === "\n") {
-      row.push(field);
-      rows.push(row);
-      row = [];
-      field = "";
-      continue;
-    }
-
-    field += char;
   }
 
   if (field !== "" || row.length > 0) {
-    row.push(field);
-    rows.push(row);
+    finishRow();
   }
 
   return rows.filter((currentRow) => currentRow.some((cell) => cell !== ""));
@@ -93,29 +110,26 @@ function normalizeHeaderName(header) {
   return String(header ?? "").replace(/^\uFEFF/, "").trim().toLowerCase();
 }
 
-function findHeaderIndex(headers, expectedName) {
-  const normalizedExpected = expectedName.toLowerCase();
-  return headers.findIndex((header) => normalizeHeaderName(header) === normalizedExpected);
-}
-
 export function countCsvRecords(content) {
   return Math.max(0, parseCsv(content).length - 1);
 }
 
 export function buildStGeorgeTransactionsCsv(rows) {
-  const headers = ["Date", "Description", "Payee", "Notes", "Category", "Debit", "Credit", "Balance"];
   return serializeCsv([
-    headers,
-    ...rows.map((row) => [
-      row.date,
-      row.description,
-      deriveStGeorgePayee(row.description),
-      deriveStGeorgeNotes(row.description),
-      row.category,
-      row.debit,
-      row.credit,
-      row.balance,
-    ]),
+    HTML_CSV_HEADERS,
+    ...rows.map((row) => {
+      const { payee, notes } = deriveStGeorgeFields(row.description);
+      return [
+        row.date,
+        row.description,
+        payee,
+        notes,
+        row.category,
+        row.debit,
+        row.credit,
+        row.balance,
+      ];
+    }),
   ]);
 }
 
@@ -126,43 +140,41 @@ export function normalizeStGeorgeDownloadCsv(content) {
   }
 
   const [headers, ...dataRows] = rows;
-  const descriptionIndex = findHeaderIndex(headers, "Description");
-  if (descriptionIndex === -1) {
+  const sourceColumns = headers.map((header, index) => ({
+    header,
+    index,
+    name: normalizeHeaderName(header),
+  }));
+  const descriptionColumn = sourceColumns.find((column) => column.name === "description");
+
+  if (!descriptionColumn) {
     return String(content ?? "");
   }
 
-  const keptColumns = headers
-    .map((header, index) => ({
-      header,
-      index,
-      normalizedName: normalizeHeaderName(header),
-    }))
-    .filter(
-      (column) => column.normalizedName !== "payee" && column.normalizedName !== "notes"
-    );
+  const outputColumns = [];
+  for (const column of sourceColumns) {
+    if (REPLACED_COLUMN_NAMES.has(column.name)) {
+      continue;
+    }
 
-  const normalizedHeaders = [];
-  for (const column of keptColumns) {
-    normalizedHeaders.push(column.header);
-    if (column.normalizedName === "description") {
-      normalizedHeaders.push("Payee", "Notes");
+    outputColumns.push(column);
+    if (column.name === "description") {
+      outputColumns.push(...DERIVED_COLUMNS);
     }
   }
 
   const normalizedRows = dataRows.map((row) => {
-    const normalizedRow = [];
+    const { payee, notes } = deriveStGeorgeFields(row[descriptionColumn.index] ?? "");
 
-    for (const column of keptColumns) {
-      const value = row[column.index] ?? "";
-      normalizedRow.push(value);
-
-      if (column.normalizedName === "description") {
-        normalizedRow.push(deriveStGeorgePayee(value), deriveStGeorgeNotes(value));
-      }
-    }
-
-    return normalizedRow;
+    return outputColumns.map((column) => {
+      if (column.key === "payee") return payee;
+      if (column.key === "notes") return notes;
+      return row[column.index] ?? "";
+    });
   });
 
-  return serializeCsv([normalizedHeaders, ...normalizedRows]);
+  return serializeCsv([
+    outputColumns.map((column) => column.header),
+    ...normalizedRows,
+  ]);
 }

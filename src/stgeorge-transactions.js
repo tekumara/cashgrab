@@ -61,23 +61,30 @@ function formatDateForFileName(value) {
   return `${year}-${month}-${day}`;
 }
 
-function buildHtmlExportBaseName({ range, from, to }) {
-  if (from && to) {
-    if (from === to) {
-      return `transactions_html_${formatDateForFileName(from)}`;
-    }
-
-    return `transactions_html_${formatDateForFileName(from)}_to_${formatDateForFileName(
-      to
-    )}`;
-  }
-
-  return `transactions_html_${String(range).toLowerCase()}`;
+async function waitForPageReady(page) {
+  await page
+    .waitForFunction(() => document.readyState === "complete", {
+      timeout: 5000,
+    })
+    .catch(() => {});
 }
 
-async function extractHtmlTransactions(page, { range, selectedOption, from, to }) {
+function buildHtmlExportBaseName({ range, from, to }) {
+  if (!from || !to) {
+    return `transactions_html_${String(range).toLowerCase()}`;
+  }
+
+  const formattedFrom = formatDateForFileName(from);
+  if (from === to) {
+    return `transactions_html_${formattedFrom}`;
+  }
+
+  return `transactions_html_${formattedFrom}_to_${formatDateForFileName(to)}`;
+}
+
+async function extractHtmlTransactions(page, { range, from, to }) {
   return page.evaluate(
-    async ({ panelId, selectedOption, from, to }) => {
+    async ({ panelId, isCustomRange, from, to }) => {
       const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
       const normalizeText = (value) => value?.replace(/\s+/g, " ").trim() ?? "";
       const panel = document.getElementById(panelId);
@@ -173,7 +180,7 @@ async function extractHtmlTransactions(page, { range, selectedOption, from, to }
               pageMatches &&
               (spinnerSeen || signature !== previousSignature || noTransactions)
             ) {
-              resolve({ pagination, noTransactions });
+              resolve({ pagination });
               return;
             }
 
@@ -241,7 +248,7 @@ async function extractHtmlTransactions(page, { range, selectedOption, from, to }
       tabLink?.click();
       await sleep(150);
 
-      if (selectedOption === 2) {
+      if (isCustomRange) {
         const hasFromField = setFieldValue("#acctDetDateFrom", from ?? "");
         const hasToField = setFieldValue("#acctDetDateTo", to ?? "");
         const searchButton = panel.querySelector('input[name="go"]');
@@ -276,9 +283,7 @@ async function extractHtmlTransactions(page, { range, selectedOption, from, to }
       }
 
       const initialRows = extractRowsFromPanel();
-      const initialPagination = settledPagination?.recordText
-        ? settledPagination
-        : getPagination();
+      const initialPagination = settledPagination.recordText ? settledPagination : getPagination();
       const dedupedRows = [];
       const seen = new Set();
 
@@ -324,14 +329,13 @@ async function extractHtmlTransactions(page, { range, selectedOption, from, to }
 
       return {
         currentUrl: location.href,
-        panelId,
         totalPages: initialPagination.totalPages,
         rows: dedupedRows,
       };
     },
     {
       panelId: RANGE_TO_PANEL_ID[range],
-      selectedOption,
+      isCustomRange: range === "CUSTOM",
       from,
       to,
     }
@@ -424,11 +428,7 @@ export async function stGeorgeTransactions(options) {
     timeout: 15000,
   });
 
-  await page
-    .waitForFunction(() => document.readyState === "complete", {
-      timeout: 5000,
-    })
-    .catch(() => {});
+  await waitForPageReady(page);
 
   const account = await page.evaluate((query) => {
     const normalizeText = (value) => value?.replace(/\s+/g, " ").trim() ?? "";
@@ -539,18 +539,13 @@ export async function stGeorgeTransactions(options) {
     timeout: 15000,
   });
 
-  await page
-    .waitForFunction(() => document.readyState === "complete", {
-      timeout: 5000,
-    })
-    .catch(() => {});
+  await waitForPageReady(page);
 
   const accountDetails = await page.evaluate((expectedIndex) => {
     const info = document.querySelector("div.account-info");
     return {
       currentUrl: location.href,
       pageIndex: info?.id ?? null,
-      visibleAccount: info?.innerText?.replace(/\s+/g, " ").trim() ?? "",
       hasExportControl: !!document.getElementById("transHistExport"),
       bodyText: document.body.innerText.replace(/\s+/g, " ").trim().slice(0, 500),
       expectedIndex,
@@ -599,7 +594,6 @@ export async function stGeorgeTransactions(options) {
   if (opts.html) {
     const htmlResult = await extractHtmlTransactions(page, {
       range: opts.range,
-      selectedOption,
       from: opts.from,
       to: opts.to,
     });
