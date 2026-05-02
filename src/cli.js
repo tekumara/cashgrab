@@ -139,7 +139,7 @@ stGeorge
 
 stGeorge
 	.command("transactions")
-	.description("Export or extract transactions as a CSV file")
+	.description("Export transactions as a CSV file")
 	.argument(
 		"<accountName...>",
 		"Case-insensitive substring match against account name, account number, or BSB",
@@ -155,7 +155,6 @@ stGeorge
 		"--to <date>",
 		'Custom end date (DD/MM/YYYY, YYYY-MM-DD, or "today"), requires --from',
 	)
-	.option("--html", "Extract the visible transaction history pages into CSV instead of using the export endpoint")
 	.option("-o, --output <dir>", "Output directory for the exported file")
 	.action(async (accountName, options) => {
 		await stGeorgeTransactions(
@@ -165,7 +164,6 @@ stGeorge
 				date: options.date,
 				from: options.from,
 				to: options.to,
-				html: options.html,
 				outputDir: options.output,
 			}),
 		);

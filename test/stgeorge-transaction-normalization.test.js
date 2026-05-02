@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  buildStGeorgeTransactionsCsv,
   countCsvRecords,
   deriveStGeorgeNotes,
   deriveStGeorgePayee,
@@ -100,36 +99,6 @@ test("deriveStGeorgePayee and deriveStGeorgeNotes extract supported St.George pr
     assert.equal(deriveStGeorgePayee(description), payee);
     assert.equal(deriveStGeorgeNotes(description), notes);
   }
-});
-
-test("buildStGeorgeTransactionsCsv includes derived Payee and Notes columns", () => {
-  const csv = buildStGeorgeTransactionsCsv([
-    {
-      date: "01/04/2026",
-      description: "Visa Purchase 12APR26 MY SHOP, SYDNEY",
-      category: "Shopping",
-      debit: "12.34",
-      credit: "",
-      balance: "100.00",
-    },
-    {
-      date: "02/04/2026",
-      description: "Internet Withdrawal 120426 RENT PAYMENT",
-      category: "Transfers",
-      debit: "500.00",
-      credit: "",
-      balance: "-400.00",
-    },
-  ]);
-
-  assert.equal(
-    csv,
-    buildCsv([
-      "Date,Description,Payee,Notes,Category,Debit,Credit,Balance",
-      '01/04/2026,"Visa Purchase 12APR26 MY SHOP, SYDNEY","MY SHOP, SYDNEY",Visa Purchase,Shopping,12.34,,100.00',
-      "02/04/2026,Internet Withdrawal 120426 RENT PAYMENT,RENT PAYMENT,Internet Withdrawal,Transfers,500.00,,-400.00",
-    ])
-  );
 });
 
 test("deriveStGeorgePayee normalizes padded whitespace in descriptions", () => {

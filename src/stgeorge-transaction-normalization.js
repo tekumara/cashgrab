@@ -5,16 +5,6 @@ const DERIVED_COLUMNS = [
   { header: "Notes", key: "notes" },
 ];
 const REPLACED_COLUMN_NAMES = new Set(["payee", "notes"]);
-const HTML_CSV_HEADERS = [
-  "Date",
-  "Description",
-  "Payee",
-  "Notes",
-  "Category",
-  "Debit",
-  "Credit",
-  "Balance",
-];
 
 // St.George descriptions often use padded spacing for visual alignment.
 // Normalize whitespace before deriving fields so Payee/Notes are emitted in a
@@ -115,25 +105,6 @@ function normalizeHeaderName(header) {
 
 export function countCsvRecords(content) {
   return Math.max(0, parseCsv(content).length - 1);
-}
-
-export function buildStGeorgeTransactionsCsv(rows) {
-  return serializeCsv([
-    HTML_CSV_HEADERS,
-    ...rows.map((row) => {
-      const { payee, notes } = deriveStGeorgeFields(row.description);
-      return [
-        row.date,
-        row.description,
-        payee,
-        notes,
-        row.category,
-        row.debit,
-        row.credit,
-        row.balance,
-      ];
-    }),
-  ]);
 }
 
 export function normalizeStGeorgeDownloadCsv(content) {
