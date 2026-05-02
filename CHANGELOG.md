@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.0.2](https://github.com/tekumara/cashgrab/compare/v0.0.1...v0.0.2) (2026-05-02)
+
+
+### Features
+
+* add ASB balances scraping ([2775bd5](https://github.com/tekumara/cashgrab/commit/2775bd5f93c16c6eca12fa67cf5506a7637366d3))
+* add ASB statement downloads ([0a8881f](https://github.com/tekumara/cashgrab/commit/0a8881f945892e38d3193674a2f962628a3e3deb))
+* add dodo invoice downloader ([2ae8889](https://github.com/tekumara/cashgrab/commit/2ae888910722082e5002c5477fea182ae1e48faa))
+* add paged St.George HTML transaction extractor ([b5833a7](https://github.com/tekumara/cashgrab/commit/b5833a723c15aff6b99f5c3d7bcb37a2cc91682b))
+* derive St.George payee and notes columns ([b65abde](https://github.com/tekumara/cashgrab/commit/b65abde73538d8a19192eff7a3be2b66a5020f23))
+* remove St George HTML extractor ([5efaba2](https://github.com/tekumara/cashgrab/commit/5efaba27d14dfd9b180870ffcd8520ff1ca78c4c))
+
+
+### Bug Fixes
+
+* require explicit ASB statement date flags ([b13bd0a](https://github.com/tekumara/cashgrab/commit/b13bd0abedac9d065a034283ac2979ec1ae70e5a))
+
+
+### Tests
+
+* document St.George whitespace normalization ([880c643](https://github.com/tekumara/cashgrab/commit/880c643d418b0cd491ab7c0dd0562c543a5dc05a))
+
 ## [0.0.1](https://github.com/tekumara/cashgrab/compare/v0.0.0...v0.0.1) (2026-04-05)
 
 
